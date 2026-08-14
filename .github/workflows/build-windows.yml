@@ -70,10 +70,9 @@ jobs:
           Write-Host "frontend/dist/index.html verified OK"
 
       - name: Build Windows installer & portable (Electron Builder)
-        run: npx electron-builder --win --x64 --config electron-builder.yml
+        run: npx electron-builder --win --x64 --config electron-builder.yml --publish never
         env:
           NODE_ENV: production
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Rename artifacts to final names
         shell: pwsh
