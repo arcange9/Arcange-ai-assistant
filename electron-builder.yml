@@ -1,0 +1,61 @@
+appId: "com.arcange.ai.assistant"
+productName: "Arcange AI Assistant"
+copyright: "Copyright © 2026 Arcange Tech Solutions"
+
+directories:
+  output: "dist"
+  buildResources: "electron/assets"
+
+# Files included in the app package (inside asar)
+files:
+  - "electron/**/*"
+  - "frontend/dist/**/*"
+  - "ai-engine/**/*"
+  - "package.json"
+
+# Extra resources bundled alongside the app (not inside asar)
+extraResources:
+  - from: "desktop-agent/"
+    to: "desktop-agent/"
+    filter: ["**/*", "!__pycache__/**", "!**/*.pyc"]
+  - from: "voice/"
+    to: "voice/"
+    filter: ["**/*", "!__pycache__/**", "!**/*.pyc"]
+
+# Windows-specific configuration
+win:
+  target:
+    - target: "nsis"
+      arch: ["x64"]
+    - target: "portable"
+      arch: ["x64"]
+  icon: "electron/assets/icon.ico"
+  publisherName: "Arcange Tech Solutions"
+  legalTrademarks: "Copyright © 2026 Arcange Tech Solutions"
+  verifyUpdateCodeSignature: false
+
+# NSIS installer configuration
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: "Arcange AI"
+  installerIcon: "electron/assets/icon.ico"
+  uninstallerIcon: "electron/assets/icon.ico"
+  installerHeaderIcon: "electron/assets/icon.ico"
+  deleteAppDataOnUninstall: false
+  allowElevation: true
+  language: "1033"
+
+# Portable executable naming
+portable:
+  artifactName: "ArcangeAI.exe"
+
+# Auto-update: uncomment and fill in your GitHub repo info to enable
+# publish:
+#   provider: "github"
+#   owner: "arcange9"
+#   repo: "Arcange-ai-assistant"
+#   releaseType: "release"

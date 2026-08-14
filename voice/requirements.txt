@@ -1,0 +1,7 @@
+openai-whisper>=20231117
+edge-tts>=6.1.0
+pyttsx3>=2.90
+SpeechRecognition>=3.10.0
+pyaudio>=0.2.14
+openai>=1.0.0
+pydub>=0.25.1

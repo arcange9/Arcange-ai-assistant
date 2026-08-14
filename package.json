@@ -1,0 +1,30 @@
+{
+  "name": "arcange-ai-assistant",
+  "version": "1.0.0",
+  "description": "Arcange AI Assistant - Your intelligent AI assistant for your computer",
+  "author": "Arcange Tech Solutions",
+  "license": "MIT",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:electron": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
+    "build:frontend": "cd frontend && npm run build",
+    "build:electron": "npx electron-builder --win --x64 --config electron-builder.yml",
+    "build": "node scripts/build.js && npx electron-builder --win --x64 --config electron-builder.yml",
+    "build:windows": "node scripts/build.js && npx electron-builder --win --x64 --config electron-builder.yml",
+    "build:ci": "node scripts/build.js && npx electron-builder --win --x64 --config electron-builder.yml",
+    "package": "node scripts/package.js",
+    "test": "cd frontend && npx tsc --noEmit",
+    "lint": "cd frontend && npx tsc --noEmit",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\""
+  },
+  "devDependencies": {
+    "electron": "^28.2.0",
+    "electron-builder": "^24.9.1",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "wait-on": "^7.2.0",
+    "prettier": "^3.2.0"
+  }
+}

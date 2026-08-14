@@ -1,0 +1,31 @@
+========================================================================
+Arcange AI Assistant - Application Icon Setup Instructions
+========================================================================
+
+The Windows build process requires a binary ICO file located at:
+  electron/assets/icon.ico
+
+Since binary .ico files cannot be generated programmatically without 
+image processing native dependencies, follow these steps to add the icon:
+
+1. Prepare Source Image:
+   - Create or export a high-resolution logo/icon image in PNG format.
+   - Recommended resolution: 256x256 pixels with transparent background.
+
+2. Convert PNG to ICO format:
+   Option A (Command Line - Linux/macOS with icotool):
+     icotool -c -o electron/assets/icon.ico your-logo.png
+
+   Option B (Command Line - ImageMagick):
+     magick convert -background transparent your-logo.png -define icon:auto-resize=256,128,64,48,32,16 electron/assets/icon.ico
+
+   Option C (Online Converter):
+     - Use an online PNG to ICO converter (e.g. https://convertico.com or https://cloudconvert.com)
+     - Upload your 256x256 PNG image and select ICO output with standard embedded sizes (256, 128, 64, 48, 32, 16).
+
+3. Place Icon File:
+   - Save the converted icon file directly to:
+     electron/assets/icon.ico
+
+4. Verify Build:
+   - Run `npm run build-windows` to verify electron-builder package incorporates the icon.

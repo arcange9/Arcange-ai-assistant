@@ -1,0 +1,12 @@
+{
+  "name": "Arcange AI Assistant",
+  "version": "1.0.0",
+  "description": "Your intelligent AI assistant for your computer.",
+  "publisher": "Arcange Tech Solutions",
+  "categories": ["Productivity", "AI Tools"],
+  "keywords": ["ai", "assistant", "desktop", "automation", "voice", "screen"],
+  "privacy_policy_url": "",
+  "support_url": "",
+  "website_url": "",
+  "minimum_os": "Windows 10"
+}

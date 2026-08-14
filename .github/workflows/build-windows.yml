@@ -1,0 +1,194 @@
+name: Build Windows App
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Windows Installer & Portable
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Cache frontend node_modules
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: ${{ runner.os }}-frontend-modules-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-frontend-modules-
+
+      - name: Cache electron-builder downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key: ${{ runner.os }}-electron-cache-${{ hashFiles('electron-builder.yml') }}
+
+      - name: Install root dependencies
+        run: npm install --no-package-lock
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: ./frontend
+
+      - name: Type-check frontend (TypeScript)
+        run: node_modules/.bin/tsc --noEmit
+        working-directory: ./frontend
+
+      - name: Build frontend (Vite production build)
+        run: npm run build
+        working-directory: ./frontend
+        env:
+          NODE_ENV: production
+
+      - name: Verify frontend dist
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "frontend/dist/index.html")) {
+            Write-Error "frontend/dist/index.html not found — frontend build failed"
+            exit 1
+          }
+          Write-Host "frontend/dist/index.html verified OK"
+
+      - name: Build Windows installer & portable (Electron Builder)
+        run: npx electron-builder --win --x64 --config electron-builder.yml
+        env:
+          NODE_ENV: production
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Rename artifacts to final names
+        shell: pwsh
+        run: |
+          # Rename NSIS installer to ArcangeAI-Setup.exe
+          $setup = Get-ChildItem -Path dist -Filter "*Setup*.exe" | Where-Object { $_.Name -ne "ArcangeAI-Setup.exe" } | Select-Object -First 1
+          if ($setup) {
+            Rename-Item -Path $setup.FullName -NewName "ArcangeAI-Setup.exe" -Force
+            Write-Host "Renamed installer: $($setup.Name) -> ArcangeAI-Setup.exe"
+          }
+
+          # Rename portable to ArcangeAI.exe (if not already named)
+          $portable = Get-ChildItem -Path dist -Filter "*.exe" | Where-Object { $_.Name -ne "ArcangeAI-Setup.exe" -and $_.Name -ne "ArcangeAI.exe" -and -not $_.Name.Contains("Setup") } | Select-Object -First 1
+          if ($portable) {
+            Rename-Item -Path $portable.FullName -NewName "ArcangeAI.exe" -Force
+            Write-Host "Renamed portable: $($portable.Name) -> ArcangeAI.exe"
+          }
+
+      - name: List and verify build artifacts
+        shell: pwsh
+        run: |
+          Write-Host "`n=== Build Artifacts ===" -ForegroundColor Cyan
+          Get-ChildItem -Path dist -Filter "*.exe" | ForEach-Object {
+            $sizeMB = [math]::Round($_.Length / 1MB, 2)
+            Write-Host "  $($_.Name) — $sizeMB MB"
+          }
+          if (-not (Test-Path "dist/ArcangeAI-Setup.exe")) {
+            Write-Error "ArcangeAI-Setup.exe not found in dist/"
+            exit 1
+          }
+          Write-Host "`nAll artifacts verified!" -ForegroundColor Green
+
+      - name: Upload Setup installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArcangeAI-Setup
+          path: dist/ArcangeAI-Setup.exe
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload portable executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArcangeAI-Portable
+          path: dist/ArcangeAI.exe
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload all dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArcangeAI-All-Builds
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Setup installer
+        uses: actions/download-artifact@v4
+        with:
+          name: ArcangeAI-Setup
+          path: release-assets
+
+      - name: Download portable executable
+        uses: actions/download-artifact@v4
+        with:
+          name: ArcangeAI-Portable
+          path: release-assets
+
+      - name: List release assets
+        run: ls -la release-assets/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-assets/ArcangeAI-Setup.exe
+            release-assets/ArcangeAI.exe
+          name: Arcange AI Assistant ${{ github.ref_name }}
+          body: |
+            ## Arcange AI Assistant ${{ github.ref_name }}
+
+            Your intelligent AI assistant for your computer.
+
+            ### Downloads
+
+            * ArcangeAI-Setup.exe — Windows installer (shortcuts + uninstaller)
+            * ArcangeAI.exe — Portable standalone (no install needed)
+
+            ### System Requirements
+
+            * Windows 10 or Windows 11 (x64)
+            * Internet connection for AI providers
+
+            ### Installation
+
+            1. Download ArcangeAI-Setup.exe
+            2. Run the installer
+            3. Choose installation directory
+            4. Launch Arcange AI from Start Menu or Desktop
+
+            For portable: download ArcangeAI.exe and run directly.
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

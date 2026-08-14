@@ -1,0 +1,20 @@
+{
+  "configurations": [
+    {
+      "name": "Arcange AI Desktop",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Desktop Agent (Python)",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/desktop-agent/main.py",
+      "console": "integratedTerminal"
+    }
+  ]
+}
