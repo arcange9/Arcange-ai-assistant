@@ -35,6 +35,13 @@ let desktopAgent = null;
 function createMainWindow() {
   const isDev = process.env.NODE_ENV === 'development';
 
+  // If window already exists, just show it
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.show();
+    mainWindow.focus();
+    return mainWindow;
+  }
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -56,7 +63,17 @@ function createMainWindow() {
   // Show when ready (prevents flicker)
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+    mainWindow.focus();
   });
+
+  // Fallback: show window after 3 seconds even if ready-to-show doesn't fire
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      console.warn('[Arcange] ready-to-show did not fire, showing window as fallback');
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  }, 3000);
 
   // Load the app
   if (isDev) {
@@ -64,7 +81,22 @@ function createMainWindow() {
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
     const frontendPath = path.join(__dirname, '..', 'frontend', 'dist', 'index.html');
-    mainWindow.loadFile(frontendPath);
+    console.log('[Arcange] Loading frontend from:', frontendPath);
+    
+    // Check if the file exists before loading
+    if (!fs.existsSync(frontendPath)) {
+      console.error('[Arcange] Frontend file not found:', frontendPath);
+      // Show an error page as fallback
+      mainWindow.loadURL('data:text/html,<html><body style="background:#0a0a0f;color:#fff;font-family:Arial;padding:40px;"><h1>Arcange AI Assistant</h1><p>Failed to load the interface. The frontend files are missing.</p><p>Please reinstall the application.</p></body></html>');
+      mainWindow.show();
+      return mainWindow;
+    }
+    
+    mainWindow.loadFile(frontendPath).catch(err => {
+      console.error('[Arcange] Failed to load frontend:', err);
+      mainWindow.loadURL('data:text/html,<html><body style="background:#0a0a0f;color:#fff;font-family:Arial;padding:40px;"><h1>Arcange AI Assistant</h1><p>Failed to load the interface.</p><p>Error: ' + encodeURIComponent(err.message) + '</p></body></html>');
+      mainWindow.show();
+    });
   }
 
   // Handle external links - open in default browser
@@ -155,30 +187,54 @@ if (!gotLock) {
 
 // App ready
 app.whenReady().then(() => {
-  // Initialize backend services
-  const { initializeBackend } = require('../../backend');
-  backend = initializeBackend(app);
+  // Initialize backend services (wrapped in try-catch so window still shows if it fails)
+  try {
+    const { initializeBackend } = require('../../backend');
+    backend = initializeBackend(app);
+    console.log('[Arcange] Backend initialized successfully');
+  } catch (err) {
+    console.error('[Arcange] Failed to initialize backend (non-fatal):', err.message);
+    backend = null;
+  }
 
-  // Create the main window
+  // Create the main window FIRST so it shows immediately
   createMainWindow();
 
-  // Create system tray
-  tray = createTray(mainWindow, store);
+  // Create system tray (wrapped in try-catch)
+  try {
+    tray = createTray(mainWindow, store);
+    console.log('[Arcange] Tray created');
+  } catch (err) {
+    console.error('[Arcange] Failed to create tray (non-fatal):', err.message);
+  }
 
-  // Register IPC handlers
-  registerIpcHandlers({ mainWindow, store, desktopAgent: () => desktopAgent, backend });
+  // Register IPC handlers (wrapped in try-catch)
+  try {
+    registerIpcHandlers({ mainWindow, store, desktopAgent: () => desktopAgent, backend });
+    console.log('[Arcange] IPC handlers registered');
+  } catch (err) {
+    console.error('[Arcange] Failed to register IPC handlers (non-fatal):', err.message);
+  }
 
   // Start desktop agent (if enabled)
-  const desktopSettings = store.get('desktopPermissions', {});
-  if (desktopSettings.enabled) {
-    startDesktopAgent();
+  try {
+    const desktopSettings = store.get('desktopPermissions', {});
+    if (desktopSettings.enabled) {
+      startDesktopAgent();
+    }
+  } catch (err) {
+    console.error('[Arcange] Desktop agent error (non-fatal):', err.message);
   }
 
   // Auto-start with Windows
-  const autoStart = store.get('autoStart', false);
-  app.setLoginItemSettings({
-    openAtLogin: autoStart,
-  });
+  try {
+    const autoStart = store.get('autoStart', false);
+    app.setLoginItemSettings({
+      openAtLogin: autoStart,
+    });
+  } catch (err) {
+    console.error('[Arcange] Auto-start config error (non-fatal):', err.message);
+  }
 
   console.log('[Arcange] Application started successfully');
 });
