@@ -10,6 +10,7 @@ directories:
 files:
   - "electron/**/*"
   - "frontend/dist/**/*"
+  - "backend/**/*"
   - "ai-engine/**/*"
   - "package.json"
 
